@@ -1,0 +1,160 @@
+---
+title: "nycflights13数据集探索 - dplyr解决方案"
+output: html_notebook
+---
+
+### 前言
+
+这是一篇天关于dplyr包的使用练习，题目来自《R语言数据高效处理指南》(黄天元 著)中的第8章-航班飞行数据演练里面的第一节8.1-nycflights13数据集探索。
+
+### (1)加载nycflights13包，并观察带有的flights数据表行列数目
+
+```{r}
+#install.packages("nycflights13") # 第一次执行后注释掉
+library("nycflights13")
+str(flights)
+```
+
+### (2)通过R语言自带的帮助文档，加深对flights表格中数据的了解
+```{r}
+?flights
+```
+
+### (3)筛选出在1月1日出发的航班记录
+
+```{r}
+head(flights) # 先瞅瞅数据啥样婶滴
+library("dplyr") # 引入dplyr包
+```
+
+```{r}
+flights %>% filter(month==1,day==1)
+```
+
+### (4)按照日期对表格进行升序排列(提示：year，month，day)
+
+```{r}
+flights %>% arrange(year, month, day)
+```
+
+
+### (5)按照航班延迟到达的时间进行降序排列(提示：arr_delay)
+
+```{r}
+flights %>% arrange(desc(arr_delay))
+```
+
+### (6)选择年、月、日三列
+
+```{r}
+flights %>% select(year, month, day)
+```
+
+### (7)选择除了年、月、日以外的所有列
+
+```{r}
+flights %>% select(-year, -month, -day)
+```
+
+### (8)把表格中名为“tailnum”的列更名为“tail_num”
+
+```{r}
+flights %>% rename(tail_num = tailnum)
+```
+
+### (9)增加一个新的列，它的名为“gain”，它等于arr_delay与dep_delay之差
+
+```{r}
+flights %>% mutate(gain = arr_delay - dep_delay)
+```
+
+### (10)求dep_delay这一列的平均值(提示：如果包含缺失值，需要设置na.rm参数)
+
+```{r}
+flights %>% summarise(mean(dep_delay, na.rm=T))
+```
+
+### (11)随机抽取10个记录(提示：sample_n)
+
+```{r}
+?sample_n # 看看咋用
+```
+
+```{r}
+sample_n(flights, 10)
+```
+```{r}
+flights %>% sample_n(10) # 书里答案写法
+```
+
+### (12)随机抽取1%的记录(提示：sample_frac)
+
+```{r}
+?sample_frac # 看看咋用
+```
+
+```{r}
+flights %>% sample_frac(0.01)
+```
+
+### (13)首先按照tailnum列进行分组，然后求每一组记录的数量、平均距离(distance)、平均延迟到达时间(arr_delay)，最后筛选出记录数大于20条，距离小于2000的记录(提示：如果包含缺失值，需要设置na.rm参数)
+
+```{r}
+flights %>%
+  group_by(tailnum) %>%
+  summarise(count = n(),
+            dist = mean(distance, na.rm = T),
+            delay = mean(arr_delay, na.rm = T)) %>%
+  filter(count > 20, dist < 2000)
+```
+
+### (14)首先按照目的地(dest)进行分组，然后求奔赴不同目的地的航班数量，每个组中有多少不同的tailnum(提示：n_distinct)
+
+```{r}
+flights %>%
+  group_by(dest) %>%
+  summarise(flights_count = n(),
+            tailum_count = n_distinct(tailnum))
+```
+
+### (15)选取表格的第1列
+
+```{r}
+flights %>% select(1)
+```
+
+### (16)选取表格中以“dep”开头的列
+
+```{r}
+flights %>% select(starts_with("dep"))
+```
+
+### (17)选取表格中从“year”到“day”之间的所有列
+
+```{r}
+flights %>% select(year:day)
+```
+
+### (18)选取flights表格中的year、month、day、hour、origin、dest、tailnum和carrier列，并将其与airline表格完成左连接操作
+
+```{r}
+flights %>% 
+  select(year,month,day,hour,origin,dest,tailnum,carrier) %>%
+  left_join(airlines)
+```
+
+### (19)选取flights表格中的year、month、day、hour、origin、dest、tailnum和carrier列，并将其与planes表格完成左连接操作，需要根据tailnum列进行连接
+
+```{r}
+flights %>% 
+  select(year,month,day,hour,origin,dest,tailnum,carrier) %>%
+  left_join(planes, by="tailnum")
+```
+
+### (20)选取flights表格中的year、month、day、hour、origin、dest、tailnum和carrier列，并将其与airports表格完成左连接操作，需要把左表的dest列与右表的faa列进行连接
+
+```{r}
+flights %>% 
+  select(year,month,day,hour,origin,dest,tailnum,carrier) %>%
+  left_join(airports, by=c("dest" = "faa"))
+```
