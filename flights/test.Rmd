@@ -1,0 +1,226 @@
+---
+title: "测试"
+output: html_notebook
+---
+
+### 前言
+
+题目来自《R语言数据高效处理指南》(黄天元 著)中的第9章-测试。
+
+为了检测学习成果，我们现在随机创建一份数据集，然后对这个数据集提出需求。如果这些需求我们都能够自如地在R语言中实现，那么就基本掌握了这些知识。数据集生成函数如下：
+
+```{r}
+nr_of_rows <- 2e3
+
+df <- data.frame(
+  Logical = sample(c(T, F, NA), prob = c(0.85, 0.1, 0.05), nr_of_rows, replace = T),
+  Integer = sample(1L:100L, nr_of_rows, replace = T),
+  Real = sample(sample(1:10000, 20)/100, nr_of_rows, replace = T),
+  Factor = as.factor(sample(labels(UScitiesD), nr_of_rows, replace = T))
+)
+```
+
+### (1)观察df表格，进行简单描述，然后把它转换为tibble格式，存储在变量dt中。后面的操作在tibble格式的数据表dt中进行
+
+```{r}
+head(df) # 先瞅瞅数据啥样婶滴
+str(df)
+summary(df)
+```
+
+```{r}
+library("tidyverse") # 引入tidyverse包
+```
+
+```{r}
+as_tibble(df) -> dt
+str(dt)
+```
+
+### (2)筛选Integer小于29的记录
+
+```{r}
+dt %>% filter(Integer<29)
+```
+
+### (3)筛选Logical为TRUE，而Integer大于29的记录
+
+```{r}
+dt %>% filter(Logical==T, Integer>29)
+```
+
+### (4)查看Logical列为缺失值的记录
+
+```{r}
+dt %>% filter(is.na(Logical))
+```
+
+### (5)选取表格的前两列，并取出前4行记录
+
+```{r}
+dt %>%
+  select(1:2) %>%
+  slice(1:4)
+```
+
+### (6)筛选Logical列为FALSE的记录，然后选择Real和Factor两列
+
+```{r}
+dt %>%
+  filter(Logical == F) %>%
+  select(Real, Factor)
+```
+
+### (7)把表格的Logical、Integer、Real和Factor这4列分别更名为a、b、c、d，并且进行更新，保存到原来的表格中
+
+```{r}
+dt %>%
+  rename(a=Logical, b=Integer, c=Real, d=Factor) -> dt
+head(dt)
+```
+
+### (8)新增一个名为e的列，让它等于b与c的乘积
+
+```{r}
+dt %>%
+  mutate(e = b * c)
+```
+xw
+### (9)新增一列常数列，名称为one，数值为1
+
+```{r}
+dt %>%
+  mutate(one = 1)
+```
+
+### (10)让表格根据b和c两列进行升序排序
+
+```{r}
+dt %>% arrange(b,c)
+```
+
+### (11)筛选出a等于TRUE的列，然后根据b进行升序排序
+
+```{r}
+dt %>%
+  filter(a == T) %>%
+  arrange(b)
+```
+
+### (12)筛选出a等于TRUE的列，然后根据b进行降序排序
+
+```{r}
+dt %>%
+  filter(a == T) %>%
+  arrange(desc(b))
+```
+
+### (13)查看数据表中哪些变量包含缺失值，缺失值的数量是多少
+
+```{r}
+dt %>% 
+  transmute_all(is.na) %>% 
+  summarise_all(sum)
+```
+
+### (14)首先筛选a为FALSE，b大于29的记录。然后选择a、b、c这3列，把b列提取出来放在第一列的位置
+
+```{r}
+dt %>%
+  filter(a == F, b > 29) %>%
+  select(a, b, c) %>%
+  select(b,everything())
+```
+
+### (15)求表格中d列有多少条独有的记录(提示：distinct)
+
+```{r}
+dt %>% distinct(d)
+```
+
+### (16)对a列分组，求每一组有多少条记录。然后计算每个分组中分别有多少条独有的d列中的记录
+
+```{r}
+dt %>%
+  count(a) 
+
+dt %>%
+  count(a, d)
+```
+
+### (17)首先根据d列进行分组，然后在组内求c列的平均值
+
+```{r}
+dt %>%
+  group_by(d) %>%
+  summarise(mean(c))
+```
+
+### (18)首先选取a为FALSE的记录，然后根据b和d列进行分组，最后分组求c列的平均数和中位数
+
+```{r}
+dt %>%
+  filter(a == FALSE) %>%
+  group_by(b, d) %>%
+  summarise(mean(c), median(c))
+```
+
+
+### (19)首先选取a为FALSE的记录，然后根据d列分组，最后求各个组内c列的最大值和最小值。
+
+```{r}
+dt %>%
+  filter(a == FALSE) %>%
+  group_by(d) %>%
+  summarise(max(c), min(c))
+```
+
+### (20)先按照d列进行分组，然后选取b、c、d这3列。新增一列为组内所有c列的数值与在组内第一次出现的c列数值之差(提示：first)
+
+```{r}
+dt %>%
+  group_by(d) %>%
+  select(b, c, d) %>%
+  mutate(c_new = c - first(c))
+```
+
+### (21)先筛选a为FALSE的记录，然后选取b、c、d这3列。其后，根据d列进行分组，在组内筛选c列为组内数值最大值和最小值的记录。最后根据b列进行排序，并在输出的时候要求看到所有记录(提示：print(n=Inf))
+
+```{r}
+dt %>%
+  filter(a == F) %>%
+  select(b, c, d) %>%
+  group_by(d) %>%
+  filter(c == max(c) | c == min(c)) %>%
+  arrange(b) %>%
+  print(n = Inf)
+```
+
+### (22)新增两列，分别根据c列进行升序排序和降序排序。然后根据d列进行分组，选出组内b列的数值为最大的记录(提示：min_rank)
+
+```{r}
+dt %>% 
+  mutate(rank_c = min_rank(c),rank_c_desc = min_rank(desc(c))) %>% 
+  group_by(d) %>% 
+  filter(b == max(b))
+```
+
+### (23)求b列值为最高和最低的5条记录(提示：top_n)
+
+```{r}
+dt %>% 
+  top_n(5,b)
+
+dt %>% 
+  top_n(5,desc(b))
+```
+
+### (24)根据d列进行分组，求得每个组的记录个数，形成一个计数表格d_count。然后用dt表格与d_count表格根据d列进行左连接
+
+```{r}
+dt %>%
+  count(d) -> d_count
+
+dt %>%
+  left_join(d_count, by = "d")
+```
