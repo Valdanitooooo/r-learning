@@ -1,0 +1,155 @@
+---
+title: "nycflights14数据集探索 - dplyr解决方案"
+output: html_notebook
+---
+
+### 前言
+
+这是一篇天关于dplyr包的使用练习，题目来自《R语言数据高效处理指南》(黄天元 著)中的第8章-航班飞行数据演练里面的第二节8.2-flights14数据集探索。
+
+### (0)下载nycflights14数据，原文中是手动下载放到工作目录，我们这里让R来下载
+
+```{r}
+download.file(url='https://raw.githubusercontent.com/Rdatatable/data.table/master/vignettes/flights14.csv',
+              destfile='flights14.csv', method='curl')
+```
+
+### (1)在当前工作目录中读取flights.csv数据表，进行加载，并对行列数量进行展示
+
+```{r}
+library("tidyverse") # 引入tidyverse包
+```
+
+```{r}
+read_csv("./flights14.csv") -> flights
+```
+
+```{r}
+dim(flights)
+```
+
+### (2)找到6月份origin等于“JFK”的航班(即6月份从JFK出发的航班)
+
+```{r}
+head(flights) # 先瞅瞅数据啥样婶滴
+```
+
+```{r}
+flights %>% filter(month==6,origin=="JFK")
+```
+
+### (3)提取表格的前两条记录
+
+```{r}
+flights %>% slice(1:2)
+```
+
+### (4)对表格的记录先按照origin列升序排列，并在此基础上，再按照dest列降序进行排列。
+
+```{r}
+flights %>% arrange(origin, desc(dest))
+```
+
+
+### (5)选择名为“arr_delay”的列
+
+```{r}
+flights %>% select(arr_delay)
+```
+
+### (6)选择名为“arr_delay”和“dep_delay”的两列，并重新命名为“delay_arr”和“delay_dep”
+
+```{r}
+flights %>% select(delay_arr = arr_delay, delay_dep = dep_delay)
+```
+
+### (7)计算arr_delay与dep_delay两列之和小于0的航班数量
+
+```{r}
+flights %>% summarise( sum( (arr_delay + dep_delay) < 0 ) )
+```
+
+### (8)首先筛选出origin等于“JFK”且月份为6的记录，然后计算arr_delay和dep_delay的均值，分别赋值给名为m_arr和m_dep的两列
+
+```{r}
+flights %>% 
+  filter(month==6,origin=="JFK") %>%
+  summarise(m_arr = mean(arr_delay, na.rm = T), m_dep = mean(dep_delay, na.rm = T))
+```
+
+### (9)根据origin进行分组，求每个组分别有多少条记录
+
+```{r}
+flights %>%
+  group_by(origin) %>%
+  count()
+```
+
+书里答案是这样的，还是按书里的写法比较好
+
+```{r}
+flights %>%
+  count(origin)
+```
+
+### (10)先筛选carrier等于“AA”的记录，再根据origin进行分组，求每个组分别有多少条记录
+
+```{r}
+flights %>%
+  filter(carrier == "AA") %>%
+  count(origin)
+```
+
+书里答案是这样的，这个执行会报错，根据上下文分析，猜测是作者笔误了，因为是同样的题目，用dplyr和data.table两种解决方案，误把data.table的答案贴到这里了
+```{r}
+flights[carrier == "AA", .N, by = origin]
+```
+
+### (11)先筛选carrier等于“AA”的记录，再根据origin和dest两列进行分组，求每个组分别有多少条记录
+
+```{r}
+flights %>%
+  filter(carrier == "AA") %>%
+  count(origin, dest)
+```
+
+### (12)先筛选carrier等于“AA”的记录，再根据origin、dest和month三列进行分组，分别求组内arr_delay和dep_delay的均值
+
+```{r}
+flights %>%
+  filter(carrier == "AA") %>%
+  group_by(origin, dest, month) %>%
+  summarise(mean(arr_delay), mean(dep_delay))
+```
+
+书中答案还给出了另一种批量均值计算的写法
+```{r}
+flights %>%
+  filter(carrier == "AA") %>%
+  group_by(origin, dest, month) %>%
+  summarise_at(vars(arr_delay, dep_delay), funs(mean))
+```
+
+### (13)先筛选carrier等于“AA”的记录，再根据origin和dest两列进行分组，求每个组分别有多少条记录，最后根据origin列进行升序排序，并在此基础上，再按照dest列降序进行排列
+
+```{r}
+flights %>%
+  filter(carrier == "AA") %>%
+  count(origin, dest) %>%
+  arrange(origin, desc(dest))
+```
+
+### (14)根据dep_delay是否大于0和arr_delay是否大于0进行分组，然后求每个组分别有多少条记录
+
+```{r}
+flights %>%
+  count(dep_delay>0,arr_delay>0)
+```
+
+### (15)根据月份进行分组，然后求每个组的前两条记录
+
+```{r}
+flights %>%
+  group_by(month) %>%
+  slice(1:2)
+```
